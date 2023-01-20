@@ -1,20 +1,17 @@
-#
-# Build stage
-#
-FROM maven:3.8.7-amazoncorretto-17 AS maven_build
-WORKDIR /app
+# https://spring.io/guides/gs/spring-boot-docker/
 
-COPY pom.xml .
-RUN mvn clean package -Dmaven.test.skip -Dmaven.main.skip -Dspring-boot.repackage.skip && rm -r target/
-COPY src ./src
-RUN mvn clean package -Dmaven.test.skip
+FROM openjdk:17-jdk-alpine
 
-#
-# Package stage
-#
-FROM amazoncorretto:19.0.1-alpine3.16
-WORKDIR /app
+WORKDIR /usr/src/app
 
-COPY --from=maven_build /app/target/backend-0.0.1-SNAPSHOT.jar /app/app.jar
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-EXPOSE 8080
+COPY . .
+
+# Run as non-root
+RUN addgroup -g 1001 -S appuser && adduser -u 1001 -S appuser -G appuser
+# RUN mkdir /logs && chown -R 1001:1001 /logs
+RUN chown -R 1001:1001 /usr/src/app
+USER 1001
+
+RUN ./mvnw package
+
+ENTRYPOINT ["java","-jar","/usr/src/app/target/backend-0.0.1-SNAPSHOT.jar"]
